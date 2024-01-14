@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ogcsys.h>
+#include <wiiuse/wpad.h>
 #include <unistd.h>
 #include "settings.h"
 
@@ -21,26 +22,37 @@ int main() {
   if (rmode->viTVMode & VI_NON_INTERLACE)
     VIDEO_WaitVSync();
 
-  std::cout << "Get Serial Number (c) Open Shop Channel 2024" << std::endl;
+  std::cout << "Get Serial Number (c) Open Shop Channel 2024" << std::endl << std::endl;
+
 
   ISFS_Initialize();
   CONF_Init();
+  WPAD_Init();
 
   u8* buffer = Settings::GetEncryptedSettings();
-  if (buffer == nullptr)
+  if (buffer != nullptr)
   {
-    // Settings::GetEncryptedSettings reports its own errors
+    Settings settings(buffer);
+    std::string code = settings.GetValue("CODE");
+    code.append(settings.GetValue("SERNO"));
+
+    // WSC returns a serial number with the internal console code and serial number.
+    std::cout << "Your Serial Number is: " << std::endl;
+    std::cout << code << std::endl << std::endl;
     sleep(5);
+    
+    std::cout << "Press HOME to return to the Wii Menu." << std::endl;
   }
 
-  Settings settings(buffer);
-  std::string code = settings.GetValue("CODE");
-  code.append(settings.GetValue("SERNO"));
 
-  // WSC returns a serial number with the internal console code and serial number.
-  std::cout << "Your Serial Number is: " << std::endl;
-  std::cout << code << std::endl;
-  sleep(5);
+  while (true) {
+    WPAD_ScanPads();
+    u32 pressed = WPAD_ButtonsDown(0);
+
+    if (pressed & WPAD_BUTTON_HOME) WII_ReturnToMenu();
+
+    VIDEO_WaitVSync();
+  }
 
   return 0;
 }
